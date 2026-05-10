@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mealClient } from '../Client/apiclient';
+import { RecipeService, NotebookService } from '../services';
 
 const NOTEBOOK_KEY = 'user_notebook';
 
@@ -41,12 +41,7 @@ export const DataProvider = ({ children }) => {
     const fetchRecipes = async (query = '') => {
         try {
             setIsRecipesLoading(true);
-            const endpoint = query
-                ? `search.php?s=${encodeURIComponent(query)}`
-                : 'search.php?s=';
-
-            const response = await mealClient.get(endpoint);
-            const meals = response.data?.meals ?? [];
+            const meals = await RecipeService.searchRecipes(query);
             setRecipes(meals);
             return meals;
         } catch (error) {
@@ -62,10 +57,7 @@ export const DataProvider = ({ children }) => {
     const fetchRecipesByCategory = async (category) => {
         try {
             setIsRecipesLoading(true);
-            const response = await mealClient.get(
-                `filter.php?c=${encodeURIComponent(category)}`
-            );
-            const meals = response.data?.meals ?? [];
+            const meals = await RecipeService.getRecipesByCategory(category);
             setRecipes(meals);
             return meals;
         } catch (error) {
@@ -98,6 +90,10 @@ export const DataProvider = ({ children }) => {
         );
         if (alreadyExists) return; // zaten ekli, tekrar ekleme
 
+        // Önce servise (API mock) gönderiyoruz
+        await NotebookService.addEntry(recipe.idMeal);
+
+        // Sonra AsyncStorage'ı güncelliyoruz
         const newList = [...notebookEntries, recipe];
         await persistNotebook(newList);
     };
@@ -106,6 +102,10 @@ export const DataProvider = ({ children }) => {
     // removeFromNotebook
     // -------------------------------------------------
     const removeFromNotebook = async (recipeId) => {
+        // Önce servise (API mock) istek atıyoruz
+        await NotebookService.removeEntry(recipeId);
+
+        // Sonra yerel durumu güncelliyoruz
         const newList = notebookEntries.filter(
             (entry) => entry.idMeal !== recipeId
         );

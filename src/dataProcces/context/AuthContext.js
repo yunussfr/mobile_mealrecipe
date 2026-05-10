@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { userClient } from '../Client/apiclient';
+import { AuthService } from '../services';
 
 // -------------------------------------------------
 // Context oluştur
@@ -41,13 +41,9 @@ export const AuthProvider = ({ children }) => {
         try {
             setIsLoading(true);
 
-            const response = await userClient.post('auth/login', {
-                username,
-                password,
-                expiresInMins: 60, // DummyJSON opsiyonel, token ömrü
-            });
-
-            const { token, ...userData } = response.data;
+            // API isteği doğrudan apiClient ile değil, AuthService üzerinden yapılıyor
+            const data = await AuthService.login(username, password);
+            const { token, ...userData } = data;
 
             // AsyncStorage'a kaydet
             await AsyncStorage.setItem('lezzet_token', token);
