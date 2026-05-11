@@ -61,4 +61,3 @@ export { CategoryScreen }     from './CategoryScreen';
 export { SearchScreen }       from './SearchScreen';
 export { FavoritesScreen }    from './FavoritesScreen';
 export { SettingsScreen }     from './SettingsScreen';
-export { AIChefScreen }       from './AIChefScreen';

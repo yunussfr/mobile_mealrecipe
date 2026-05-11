@@ -1,32 +1,29 @@
-import React, { useState, useMemo, forwardRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
-  motion as Motion,
-  AnimatePresence,
-  useMotionValue,
-  useTransform,
-} from 'motion/react';
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  SafeAreaView,
+  Image,
+  Dimensions,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Search, User, Sparkles, ChefHat, Bell } from 'lucide-react-native';
 
-import {
-  Search,
-  User,
-  ChevronRight,
-  Clock as ClockIcon,
-  Sparkles,
-  ChefHat,
-  Bell,
-} from 'lucide-react';
-
-import { Link, useNavigate } from 'react-router';
-
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useData } from '../contexts/DataContext';
 import { FULL_CATEGORIES } from '../lib/seed-data';
-import { NotificationsPopup } from '../components/notifications-popup';
 import { SearchService } from '../services/search.service';
+import { RecipeCard } from '../components/RecipeCard';
+import { SearchBar } from '../components/SearchBar';
+import { NotificationsPopup } from '../components/notifications-popup'; // Varsayıyoruz ki RN uyumlu veya sonra güncellenecek
+
+const { width } = Dimensions.get('window');
 
 // ─── Ana Ekran ────────────────────────────────────────────────────────────────
 export function DiscoverScreen() {
-  const navigate = useNavigate();
+  const navigation = useNavigation();
 
   const {
     recipes,
@@ -40,20 +37,14 @@ export function DiscoverScreen() {
   const [expandedSection, setExpandedSection] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // ── Swipe Mantığı ──────────────────────────────────────────────────────────
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+  // ── Swipe Mantığı (Yatay FlatList ile Swipe Benzeri Görünüm) ─────────────────
   const swipeRecipes = useMemo(
     () => recipes.filter((r) => r.isPublic),
     [recipes]
   );
 
-  const handleSwipe = (direction) => {
-    if (direction === 'right') {
-      const recipe = swipeRecipes[currentIndex];
-      if (recipe) addToNotebook(recipe.id, 'Genel');
-    }
-    setCurrentIndex((prev) => prev + 1);
+  const handleSwipe = (recipe) => {
+    addToNotebook(recipe.id, 'Genel');
   };
 
   // ── Arama Filtresi ─────────────────────────────────────────────────────────
@@ -72,227 +63,260 @@ export function DiscoverScreen() {
     [filteredRecipes]
   );
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications ? notifications.filter((n) => !n.read).length : 0;
 
-  return (
-    <div className="flex flex-col min-h-full bg-[#FFF8F0] pb-24">
-      {/* ── Header ── */}
-      <div className="sticky top-0 z-50 bg-[#FFF8F0] border-b-[3px] border-[#1A1A2E] px-4 py-4 space-y-4 shadow-sm">
-        <header className="flex items-center justify-between">
-          <Link
-            to="/profile"
-            className="w-10 h-10 rounded-full bg-[#FFD600] border-[3px] border-[#1A1A2E] shadow-[3px_3px_0_#1A1A2E] flex items-center justify-center"
-          >
-            <User size={20} strokeWidth={3} />
-          </Link>
-
-          <h1 className="font-['Righteous'] text-2xl text-[#1A1A2E] flex items-center gap-1">
-            <span className="text-[#FF6B00]">LEZZET</span>
-            <span className="bg-[#FF6B00] text-white px-2 py-0.5 rounded-lg border-2 border-[#1A1A2E]">
-              TAT
-            </span>
-          </h1>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowNotifications(true)}
-              className="relative w-10 h-10 rounded-full bg-white border-[3px] border-[#1A1A2E] flex items-center justify-center"
-            >
-              <Bell size={20} strokeWidth={3} />
-
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#E83F6F] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#1A1A2E]">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            <div className="bg-[#FF6B00] text-white font-black px-3 py-1 rounded-full text-xs border-[3px] border-[#1A1A2E]">
-              {recipes.length}
-            </div>
-          </div>
-        </header>
-
-        {/* Arama */}
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="lezzettat'ta ara..."
-            className="w-full bg-white border-[3px] border-[#1A1A2E] rounded-2xl py-3 px-12 font-['Nunito'] font-bold"
-          />
-
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2"
-            size={20}
-            strokeWidth={3}
-          />
-        </div>
-      </div>
-
-      {/* Notifications */}
-      <NotificationsPopup
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
-        notifications={notifications}
-        markNotificationAsRead={markNotificationAsRead}
-        markAllNotificationsAsRead={markAllNotificationsAsRead}
-      />
-
-      {/* ── Swipe Section ── */}
-      <div className="px-4 mt-8 h-[380px] relative">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-['Righteous'] text-xl text-[#1A1A2E] flex items-center gap-2">
-            <Sparkles size={24} />
-            Keşfet
-          </h2>
-        </div>
-
-        <div className="relative h-full">
-          <AnimatePresence mode="popLayout">
-            {currentIndex < swipeRecipes.length ? (
-              <SwipeCard
-                key={swipeRecipes[currentIndex].id}
-                recipe={swipeRecipes[currentIndex]}
-                onSwipe={handleSwipe}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <p className="font-['Righteous'] text-[#1A1A2E]/40 text-center">
-                  Bugünlük bu kadar
-                </p>
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Popüler */}
-      <div className="mt-14 px-4">
-        <RecipeSection
-          title="Popüler"
-          recipes={popularRecipes}
-          isExpanded={expandedSection === 'Popüler'}
-          onToggleExpand={() =>
-            setExpandedSection(
-              expandedSection === 'Popüler' ? null : 'Popüler'
-            )
-          }
-        />
-      </div>
-
-      {/* Yeni */}
-      <div className="mt-8 px-4">
-        <RecipeSection
-          title="Yeni Tarifler"
-          recipes={newRecipes}
-          isExpanded={expandedSection === 'Yeni Tarifler'}
-          onToggleExpand={() =>
-            setExpandedSection(
-              expandedSection === 'Yeni Tarifler' ? null : 'Yeni Tarifler'
-            )
-          }
-        />
-      </div>
-
-      {/* Kategoriler */}
-      <div className="px-4 mt-12 mb-10">
-        <div className="grid grid-cols-2 gap-4">
-          {FULL_CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => navigate(`/category/${cat.id}`)}
-              className="flex items-center gap-3 p-3 bg-white border-[3px] border-[#1A1A2E] rounded-2xl"
-            >
-              <div
-                style={{ backgroundColor: cat.color }}
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-              >
-                {cat.emoji}
-              </div>
-              <span className="font-['Nunito'] font-black text-sm">
-                {cat.name}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* AI FAB */}
-      <Motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => navigate('/ai-chef')}
-        className="fixed bottom-24 right-6 w-16 h-16 bg-[#FF6B00] border-[4px] border-[#1A1A2E] rounded-2xl flex flex-col items-center justify-center text-white"
-      >
-        <ChefHat size={28} />
-        <span className="text-[8px] font-black">AI</span>
-      </Motion.button>
-    </div>
-  );
-}
-
-// ─── Swipe Card ───────────────────────────────────────────────────────────────
-const SwipeCard = forwardRef(function SwipeCard({ recipe, onSwipe }, ref) {
-  const navigate = useNavigate();
-
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-30, 30]);
-
-  return (
-    <Motion.div
-      ref={ref}
-      style={{ x, rotate }}
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      onDragEnd={(_, info) => {
-        if (info.offset.x > 120) onSwipe('right');
-        else if (info.offset.x < -120) onSwipe('left');
-      }}
-      className="absolute inset-0"
+  // ── Render Bölümleri ───────────────────────────────────────────────────────
+  const renderSwipeCard = ({ item }) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate('RecipeDetail', { id: item.id })}
+      onLongPress={() => handleSwipe(item)} // Swipe yerine basılı tutarak kaydetme simülasyonu
+      style={styles.swipeCardWrapper}
     >
-      <div
-        onClick={() => navigate(`/recipe/${recipe.id}`)}
-        className="w-full h-full rounded-[32px] border-[4px] border-[#1A1A2E] overflow-hidden bg-white"
-      >
-        <ImageWithFallback
-          src={recipe.image}
-          className="w-full h-full object-cover"
+      <View style={styles.swipeCard}>
+        <Image
+          source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+          style={styles.swipeCardImage}
         />
-      </div>
-    </Motion.div>
+        <View style={styles.swipeCardOverlay}>
+          <Text style={styles.swipeCardTitle}>{item.title}</Text>
+          <Text style={styles.swipeCardHint}>Kaydetmek için basılı tut</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
-});
 
-// ─── Section ────────────────────────────────────────────────────────────────
-function RecipeSection({ title, recipes, isExpanded, onToggleExpand }) {
-  const navigate = useNavigate();
+  const renderCategory = ({ item }) => (
+    <TouchableOpacity
+      style={styles.categoryItem}
+      onPress={() => navigation.navigate('Category', { id: item.id })}
+    >
+      <View style={[styles.categoryIcon, { backgroundColor: item.color }]}>
+        <Text style={styles.categoryEmoji}>{item.emoji}</Text>
+      </View>
+      <Text style={styles.categoryName}>{item.name}</Text>
+    </TouchableOpacity>
+  );
 
   return (
-    <div>
-      <div className="flex justify-between mb-4">
-        <h2 className="font-['Righteous'] text-xl">{title}</h2>
-        <button onClick={onToggleExpand}>Tümü</button>
-      </div>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={() => navigation.navigate('Profile')}
+            >
+              <User size={20} color="#1A1A2E" strokeWidth={3} />
+            </TouchableOpacity>
 
-      <div className="grid grid-cols-2 gap-4">
-        {recipes.map((recipe) => (
-          <div
-            key={recipe.id}
-            onClick={() => navigate(`/recipe/${recipe.id}`)}
-            className="bg-white border-[3px] border-[#1A1A2E] rounded-2xl"
-          >
-            <ImageWithFallback
-              src={recipe.image}
-              className="h-32 w-full object-cover"
-            />
-            <div className="p-3">
-              <h3 className="font-bold text-sm">{recipe.title}</h3>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoText1}>LEZZET</Text>
+              <View style={styles.logoBadge}>
+                <Text style={styles.logoText2}>TAT</Text>
+              </View>
+            </View>
+
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.notificationButton}
+                onPress={() => setShowNotifications(true)}
+              >
+                <Bell size={20} color="#1A1A2E" strokeWidth={3} />
+                {unreadCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.recipeCountBadge}>
+                <Text style={styles.recipeCountText}>{recipes.length}</Text>
+              </View>
+            </View>
+          </View>
+
+          <SearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="lezzettat'ta ara..."
+            style={{ marginTop: 16 }}
+          />
+        </View>
+
+        {/* Ekranda Scroll edilebilir ana alan */}
+        <FlatList
+          data={[{ id: 'content' }]} // Dummy data for FlatList as ScrollView wrapper
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          renderItem={() => (
+            <View style={styles.content}>
+              {/* ── Swipe Section (Yatay FlatList) ── */}
+              <View style={styles.sectionHeader}>
+                <Sparkles size={24} color="#1A1A2E" />
+                <Text style={styles.sectionTitle}>Keşfet</Text>
+              </View>
+
+              {swipeRecipes.length > 0 ? (
+                <FlatList
+                  data={swipeRecipes}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={width - 32}
+                  decelerationRate="fast"
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderSwipeCard}
+                  contentContainerStyle={styles.swipeListContent}
+                />
+              ) : (
+                <View style={styles.emptySwipe}>
+                  <Text style={styles.emptySwipeText}>Bugünlük bu kadar</Text>
+                </View>
+              )}
+
+              {/* Popüler */}
+              <View style={styles.sectionMargin}>
+                <RecipeSection
+                  title="Popüler"
+                  recipes={popularRecipes}
+                  isExpanded={expandedSection === 'Popüler'}
+                  onToggleExpand={() => setExpandedSection(expandedSection === 'Popüler' ? null : 'Popüler')}
+                />
+              </View>
+
+              {/* Yeni Tarifler */}
+              <View style={styles.sectionMargin}>
+                <RecipeSection
+                  title="Yeni Tarifler"
+                  recipes={newRecipes}
+                  isExpanded={expandedSection === 'Yeni Tarifler'}
+                  onToggleExpand={() => setExpandedSection(expandedSection === 'Yeni Tarifler' ? null : 'Yeni Tarifler')}
+                />
+              </View>
+
+              {/* Kategoriler */}
+              <View style={styles.categoriesSection}>
+                <FlatList
+                  data={FULL_CATEGORIES}
+                  numColumns={2}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderCategory}
+                  columnWrapperStyle={styles.categoriesRow}
+                  scrollEnabled={false}
+                />
+              </View>
+            </View>
+          )}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
+
+// ─── Yardımcı Component: RecipeSection ──────────────────────────────────────
+function RecipeSection({ title, recipes, isExpanded, onToggleExpand }) {
+  const displayRecipes = isExpanded ? recipes : recipes.slice(0, 4);
+
+  return (
+    <View>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitleSmall}>{title}</Text>
+        <TouchableOpacity onPress={onToggleExpand}>
+          <Text style={styles.toggleText}>{isExpanded ? 'Gizle' : 'Tümü'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={displayRecipes}
+        numColumns={2}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.gridItemHalf}>
+            <RecipeCard recipe={item} showTime={false} showDifficulty={false} />
+          </View>
+        )}
+        columnWrapperStyle={styles.rowBetween}
+        scrollEnabled={false}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FFF8F0' },
+  container: { flex: 1 },
+  header: {
+    backgroundColor: '#FFF8F0',
+    borderBottomWidth: 3,
+    borderBottomColor: '#1A1A2E',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    zIndex: 50,
+    elevation: 5,
+  },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  profileButton: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFD600',
+    borderWidth: 3, borderColor: '#1A1A2E', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#1A1A2E', shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, elevation: 4,
+  },
+  logoContainer: { flexDirection: 'row', alignItems: 'center' },
+  logoText1: { fontFamily: 'Righteous', fontSize: 24, color: '#FF6B00' },
+  logoBadge: {
+    backgroundColor: '#FF6B00', paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 8, borderWidth: 2, borderColor: '#1A1A2E', marginLeft: 4,
+  },
+  logoText2: { fontFamily: 'Righteous', fontSize: 20, color: '#FFFFFF' },
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  notificationButton: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF',
+    borderWidth: 3, borderColor: '#1A1A2E', alignItems: 'center', justifyContent: 'center', marginRight: 8,
+  },
+  notificationBadge: {
+    position: 'absolute', top: -4, right: -4, backgroundColor: '#E83F6F',
+    width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#1A1A2E',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  notificationBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
+  recipeCountBadge: {
+    backgroundColor: '#FF6B00', paddingHorizontal: 12, paddingVertical: 4,
+    borderRadius: 16, borderWidth: 3, borderColor: '#1A1A2E',
+  },
+  recipeCountText: { color: '#FFFFFF', fontWeight: '900', fontSize: 12 },
+  content: { paddingBottom: 100 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginTop: 24, marginBottom: 16 },
+  sectionTitle: { fontFamily: 'Righteous', fontSize: 20, color: '#1A1A2E', marginLeft: 8 },
+  swipeListContent: { paddingHorizontal: 16 },
+  swipeCardWrapper: { width: width - 32, marginRight: 16 },
+  swipeCard: {
+    width: '100%', height: 380, borderRadius: 32, borderWidth: 4, borderColor: '#1A1A2E',
+    overflow: 'hidden', backgroundColor: '#FFFFFF',
+  },
+  swipeCardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  swipeCardOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, padding: 24,
+    backgroundColor: 'rgba(26,26,46,0.6)',
+  },
+  swipeCardTitle: { fontFamily: 'Righteous', fontSize: 24, color: '#FFFFFF', marginBottom: 8 },
+  swipeCardHint: { fontFamily: 'Nunito-Bold', fontSize: 12, color: '#FFFFFF', opacity: 0.8 },
+  emptySwipe: { height: 380, alignItems: 'center', justifyContent: 'center' },
+  emptySwipeText: { fontFamily: 'Righteous', fontSize: 16, color: 'rgba(26,26,46,0.4)' },
+  sectionMargin: { marginTop: 32, paddingHorizontal: 16 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  sectionTitleSmall: { fontFamily: 'Righteous', fontSize: 20, color: '#1A1A2E' },
+  toggleText: { fontFamily: 'Nunito-Bold', color: '#FF6B00', fontWeight: 'bold' },
+  rowBetween: { justifyContent: 'space-between' },
+  gridItemHalf: { width: '48%' },
+  categoriesSection: { marginTop: 48, marginBottom: 40, paddingHorizontal: 16 },
+  categoriesRow: { justifyContent: 'space-between', marginBottom: 16 },
+  categoryItem: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderWidth: 3, borderColor: '#1A1A2E', borderRadius: 16, padding: 12, width: '48%',
+  },
+  categoryIcon: {
+    width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
+  categoryEmoji: { fontSize: 24 },
+  categoryName: { fontFamily: 'Nunito-Black', fontSize: 14, fontWeight: '900', color: '#1A1A2E', flex: 1 },
+});

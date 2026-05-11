@@ -1,11 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { Search as SearchIcon, X, Clock as ClockIcon, SlidersHorizontal } from 'lucide-react';
-import { useNavigate } from 'react-router';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  SafeAreaView,
+  Image,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Search as SearchIcon, X, Clock as ClockIcon, SlidersHorizontal } from 'lucide-react-native';
 import { useData } from '../contexts/DataContext';
 import { SearchService } from '../services/search.service';
 
-// ─── Sabitler ───────────────────────────────────────────────────────────────
 const POPULAR_SEARCHES = [
   { text: 'Makarna', color: '#FF6B00' },
   { text: 'Burger', color: '#00C853' },
@@ -27,9 +35,8 @@ const SORT_OPTIONS = [
   { value: 'calories_asc', label: 'Kalori ↑' },
 ];
 
-// ─── Ana Component ─────────────────────────────────────────────────────────
 export function SearchScreen() {
-  const navigate = useNavigate();
+  const navigation = useNavigation();
   const { recipes } = useData();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,135 +58,211 @@ export function SearchScreen() {
   }, [recipes, searchTerm, difficulty, sortOption]);
 
   const hasQuery = searchTerm.trim() || difficulty;
-  const activeFilterCount = [difficulty].filter(Boolean).length;
+
+  const renderRecipeItem = ({ item }) => (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('RecipeDetail', { id: item.id })}
+      style={styles.recipeCard}
+    >
+      <View style={styles.recipeImageContainer}>
+        <Image
+          source={{ uri: typeof item.image === 'string' ? item.image : '' }}
+          style={styles.recipeImage}
+        />
+      </View>
+      <View style={styles.recipeCardBody}>
+        <Text style={styles.recipeCardTitle} numberOfLines={2}>{item.title}</Text>
+        <View style={styles.timeRow}>
+          <ClockIcon size={10} color="rgba(26,26,46,0.5)" />
+          <Text style={styles.timeText}>{item.time}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <div className="min-h-full pb-24 bg-[#FFF8F0]">
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        
+        {/* HEADER */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Tarif Ara</Text>
 
-      {/* HEADER */}
-      <div className="sticky top-0 z-30 bg-[#FFF8F0] border-b-[3px] border-[#1A1A2E] px-5 py-5 space-y-4">
-        <h1 className="font-['Righteous'] text-2xl text-[#1A1A2E]">Tarif Ara</h1>
+          <View style={styles.searchRow}>
+            <View style={styles.searchInputContainer}>
+              <SearchIcon style={styles.searchIcon} size={20} color="#1A1A2E" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Tarif, malzeme veya yazar ara..."
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholderTextColor="rgba(26,26,46,0.4)"
+              />
+              {searchTerm.length > 0 && (
+                <TouchableOpacity style={styles.clearBtn} onPress={() => setSearchTerm('')}>
+                  <X size={16} color="#1A1A2E" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity 
+              style={[styles.filterBtn, showFilters && styles.filterBtnActive]} 
+              onPress={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal size={18} color={showFilters ? '#FFFFFF' : '#1A1A2E'} />
+            </TouchableOpacity>
+          </View>
 
-        {/* Search bar */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tarif, malzeme veya yazar ara..."
-              className="w-full h-12 pl-12 pr-10 rounded-full border-[3px] border-[#1A1A2E] bg-white font-bold"
-            />
-
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2" size={20} />
-
-            {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2">
-                <X size={16} />
-              </button>
-            )}
-          </div>
-
-          {/* filter button */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="w-12 h-12 border-[3px] border-[#1A1A2E] bg-white flex items-center justify-center"
-          >
-            <SlidersHorizontal size={18} />
-          </button>
-        </div>
-
-        {/* Filters */}
-        {showFilters && (
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-black">Zorluk</p>
-              <div className="flex gap-2 flex-wrap">
+          {/* Filters */}
+          {showFilters && (
+            <View style={styles.filtersContainer}>
+              <Text style={styles.filterLabel}>Zorluk</Text>
+              <View style={styles.filterChipsRow}>
                 {DIFFICULTY_OPTIONS.map(d => (
-                  <button
+                  <TouchableOpacity
                     key={d || 'all'}
-                    onClick={() => setDifficulty(d)}
-                    className="px-3 py-1 border-2 border-black text-xs font-black"
+                    style={[styles.filterChip, difficulty === d && styles.filterChipActive]}
+                    onPress={() => setDifficulty(d)}
                   >
-                    {d || 'Tümü'}
-                  </button>
+                    <Text style={[styles.filterChipText, difficulty === d && styles.filterChipTextActive]}>
+                      {d || 'Tümü'}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
-              </div>
-            </div>
+              </View>
 
-            <div>
-              <p className="text-xs font-black">Sıralama</p>
-              <div className="flex gap-2 overflow-x-auto">
-                {SORT_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setSortOption(opt.value)}
-                    className="px-3 py-1 border-2 border-black text-xs font-black"
+              <Text style={styles.filterLabel}>Sıralama</Text>
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={SORT_OPTIONS}
+                keyExtractor={(item) => item.value}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.filterChip, sortOption === item.value && styles.filterChipActive]}
+                    onPress={() => setSortOption(item.value)}
                   >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+                    <Text style={[styles.filterChipText, sortOption === item.value && styles.filterChipTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                contentContainerStyle={styles.sortListContent}
+              />
+            </View>
+          )}
+        </View>
 
-      {/* CONTENT */}
-      <div className="px-5 pt-5">
-
-        {!hasQuery ? (
-          <div>
-            <h3 className="font-black mb-3">Popüler Aramalar</h3>
-
-            <div className="flex flex-wrap gap-2">
-              {POPULAR_SEARCHES.map(tag => (
-                <button
-                  key={tag.text}
-                  onClick={() => setSearchTerm(tag.text)}
-                  style={{ backgroundColor: tag.color + '20', color: tag.color }}
-                  className="px-3 py-1 border-2 border-black font-bold text-sm"
-                >
-                  {tag.text}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <>
-            <p className="font-black mb-4">
-              {results.length} tarif bulundu
-            </p>
-
-            {results.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4">
-                {results.map(recipe => (
-                  <div
-                    key={recipe.id}
-                    onClick={() => navigate(`/recipe/${recipe.id}`)}
-                    className="border-2 border-black bg-white cursor-pointer"
+        {/* CONTENT */}
+        <View style={styles.content}>
+          {!hasQuery ? (
+            <View>
+              <Text style={styles.sectionTitle}>Popüler Aramalar</Text>
+              <View style={styles.tagsContainer}>
+                {POPULAR_SEARCHES.map(tag => (
+                  <TouchableOpacity
+                    key={tag.text}
+                    style={[styles.tagBtn, { backgroundColor: tag.color + '20', borderColor: tag.color }]}
+                    onPress={() => setSearchTerm(tag.text)}
                   >
-                    <div className="h-32">
-                      <ImageWithFallback src={recipe.image} className="w-full h-full object-cover" />
-                    </div>
-
-                    <div className="p-2">
-                      <h3 className="text-xs font-black">{recipe.title}</h3>
-                      <div className="text-[10px] flex items-center gap-1">
-                        <ClockIcon size={10} /> {recipe.time}
-                      </div>
-                    </div>
-                  </div>
+                    <Text style={[styles.tagText, { color: tag.color }]}>{tag.text}</Text>
+                  </TouchableOpacity>
                 ))}
-              </div>
-            ) : (
-              <p className="text-center mt-10 font-bold">
-                Sonuç bulunamadı
-              </p>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.resultsCount}>{results.length} tarif bulundu</Text>
+              
+              {results.length > 0 ? (
+                <FlatList
+                  data={results}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderRecipeItem}
+                  numColumns={2}
+                  columnWrapperStyle={styles.row}
+                  contentContainerStyle={styles.listContent}
+                  showsVerticalScrollIndicator={false}
+                />
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>Sonuç bulunamadı</Text>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FFF8F0' },
+  container: { flex: 1 },
+  
+  header: {
+    backgroundColor: '#FFF8F0',
+    borderBottomWidth: 3,
+    borderBottomColor: '#1A1A2E',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    zIndex: 10,
+  },
+  headerTitle: { fontFamily: 'Righteous', fontSize: 24, color: '#1A1A2E', marginBottom: 16 },
+  
+  searchRow: { flexDirection: 'row', gap: 8 },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#1A1A2E',
+    borderRadius: 24,
+    height: 48,
+    position: 'relative',
+  },
+  searchIcon: { position: 'absolute', left: 16, zIndex: 1 },
+  searchInput: { flex: 1, height: '100%', paddingLeft: 44, paddingRight: 40, fontFamily: 'Nunito-Bold', fontSize: 14, color: '#1A1A2E' },
+  clearBtn: { position: 'absolute', right: 12, padding: 4, zIndex: 1 },
+  
+  filterBtn: { width: 48, height: 48, backgroundColor: '#FFFFFF', borderWidth: 3, borderColor: '#1A1A2E', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  filterBtnActive: { backgroundColor: '#1A1A2E' },
+
+  filtersContainer: { marginTop: 16 },
+  filterLabel: { fontFamily: 'Nunito-Black', fontSize: 12, fontWeight: '900', color: '#1A1A2E', marginBottom: 8, marginTop: 8 },
+  filterChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderWidth: 2, borderColor: '#1A1A2E', borderRadius: 8, backgroundColor: '#FFFFFF', marginRight: 8 },
+  filterChipActive: { backgroundColor: '#1A1A2E' },
+  filterChipText: { fontFamily: 'Nunito-Black', fontSize: 12, fontWeight: '900', color: '#1A1A2E' },
+  filterChipTextActive: { color: '#FFFFFF' },
+  sortListContent: { paddingRight: 20 },
+
+  content: { flex: 1, padding: 20 },
+  sectionTitle: { fontFamily: 'Nunito-Black', fontSize: 14, fontWeight: '900', color: '#1A1A2E', marginBottom: 12 },
+  
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tagBtn: { paddingHorizontal: 12, paddingVertical: 6, borderWidth: 2, borderRadius: 8 },
+  tagText: { fontFamily: 'Nunito-Bold', fontSize: 14, fontWeight: 'bold' },
+
+  resultsCount: { fontFamily: 'Nunito-Black', fontSize: 14, fontWeight: '900', color: '#1A1A2E', marginBottom: 16 },
+  listContent: { paddingBottom: 100 },
+  row: { justifyContent: 'space-between', marginBottom: 16 },
+  
+  recipeCard: {
+    width: '48%', backgroundColor: '#FFFFFF', borderWidth: 3, borderColor: '#1A1A2E',
+    borderRadius: 12, overflow: 'hidden', shadowColor: '#1A1A2E',
+    shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, elevation: 4,
+  },
+  recipeImageContainer: { height: 120, borderBottomWidth: 3, borderBottomColor: '#1A1A2E' },
+  recipeImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  recipeCardBody: { padding: 8 },
+  recipeCardTitle: { fontFamily: 'Nunito-Black', fontSize: 12, fontWeight: '900', color: '#1A1A2E', height: 32, marginBottom: 4 },
+  timeRow: { flexDirection: 'row', alignItems: 'center' },
+  timeText: { fontSize: 10, fontFamily: 'Nunito-Black', fontWeight: '900', color: 'rgba(26,26,46,0.5)', marginLeft: 4 },
+
+  emptyContainer: { flex: 1, alignItems: 'center', paddingTop: 40 },
+  emptyText: { fontFamily: 'Nunito-Bold', fontSize: 16, fontWeight: 'bold', color: 'rgba(26,26,46,0.5)' },
+});

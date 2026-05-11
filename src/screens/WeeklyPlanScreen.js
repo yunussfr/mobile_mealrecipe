@@ -1,6 +1,15 @@
 import React from 'react';
-import { useNavigate } from 'react-router';
-import { ArrowLeft, Calendar, ChevronRight, Plus } from 'lucide-react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  SafeAreaView,
+  Alert,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { ArrowLeft, Calendar, ChevronRight, Plus, X } from 'lucide-react-native';
 import { useData } from '../contexts/DataContext';
 import { WeeklyPlanService, WEEK_DAYS } from '../services/weekly-plan.service';
 
@@ -15,143 +24,160 @@ const DAY_COLORS = [
 ];
 
 export function WeeklyPlanScreen() {
-  const navigate = useNavigate();
+  const navigation = useNavigation();
   const { weeklyPlan, updateWeeklyPlan } = useData();
 
   const todayName = WeeklyPlanService.getTodayName();
   const plannedCount = WeeklyPlanService.countPlannedDays(weeklyPlan);
 
+  const handleClearPlan = () => {
+    Alert.alert(
+      'Planı Temizle',
+      'Tüm haftalık plan silinsin mi?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Sil', 
+          style: 'destructive',
+          onPress: () => {
+            WEEK_DAYS.forEach(day => updateWeeklyPlan(day, null));
+          }
+        }
+      ]
+    );
+  };
+
   return (
-    <div className="min-h-full pb-24 bg-[#FFF8F0]">
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <ArrowLeft size={18} color="#1A1A2E" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleRow}>
+            <Calendar size={18} color="#1A1A2E" />
+            <Text style={styles.headerTitle}>Haftalık Plan</Text>
+          </View>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{plannedCount}/7</Text>
+          </View>
+        </View>
 
-      {/* HEADER */}
-      <div className="p-5 flex items-center gap-4 border-b-4 bg-white">
+        {/* PROGRESS */}
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressBar, { width: `${(plannedCount / 7) * 100}%` }]} />
+        </View>
+        <Text style={styles.progressLabel}>
+          {plannedCount === 0 ? 'Henüz plan yok' : `${plannedCount} gün planlandı`}
+        </Text>
 
-        <button
-          onClick={() => navigate(-1)}
-          className="w-10 h-10 border-2 border-black flex items-center justify-center"
-        >
-          <ArrowLeft size={18} />
-        </button>
+        {/* DAYS */}
+        <View style={styles.daysList}>
+          {WEEK_DAYS.map((day, idx) => {
+            const isPlanned = !!weeklyPlan[day];
+            const isToday = day === todayName;
+            const color = DAY_COLORS[idx];
 
-        <div className="flex items-center gap-2">
-          <Calendar size={18} />
-          <h1 className="text-xl font-bold">Haftalık Plan</h1>
-        </div>
+            return (
+              <TouchableOpacity
+                key={day}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (!isPlanned) navigation.navigate('Discover');
+                }}
+                style={[
+                  styles.dayCard,
+                  isToday && styles.dayCardToday
+                ]}
+              >
+                <View style={styles.dayLeft}>
+                  <View style={[styles.colorBar, { backgroundColor: color }]} />
+                  <View style={styles.dayInfo}>
+                    <Text style={styles.dayName}>
+                      {day} {isToday && '(Bugün)'}
+                    </Text>
+                    {isPlanned ? (
+                      <Text style={styles.recipeTitle}>{weeklyPlan[day]?.recipeTitle}</Text>
+                    ) : (
+                      <Text style={styles.emptyText}>Ne pişiriyoruz?</Text>
+                    )}
+                  </View>
+                </View>
 
-        <div className="ml-auto bg-orange-500 text-white px-2 py-1 text-xs font-bold">
-          {plannedCount}/7
-        </div>
-      </div>
+                {isPlanned ? (
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        navigation.navigate('RecipeDetail', { id: weeklyPlan[day]?.recipeId });
+                      }}
+                      style={styles.actionBtn}
+                    >
+                      <ChevronRight size={16} color="#1A1A2E" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        updateWeeklyPlan(day, null);
+                      }}
+                      style={styles.actionBtnRed}
+                    >
+                      <X size={16} color="#FF1744" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.addBtnDashed}>
+                    <Plus size={16} color="#1A1A2E" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-      {/* PROGRESS */}
-      <div className="mx-5 mt-4 h-3 border-2 border-black bg-white overflow-hidden">
-        <div
-          className="h-full bg-orange-500"
-          style={{ width: `${(plannedCount / 7) * 100}%` }}
-        />
-      </div>
+        {/* RESET */}
+        {plannedCount > 0 && (
+          <TouchableOpacity onPress={handleClearPlan} style={styles.clearBtn}>
+            <Text style={styles.clearBtnText}>Planı Temizle</Text>
+          </TouchableOpacity>
+        )}
 
-      <p className="text-center text-xs font-bold mt-2">
-        {plannedCount === 0
-          ? 'Henüz plan yok'
-          : `${plannedCount} gün planlandı`}
-      </p>
-
-      {/* DAYS */}
-      <div className="p-5 space-y-3">
-
-        {WEEK_DAYS.map((day, idx) => {
-          const isPlanned = !!weeklyPlan[day];
-          const isToday = day === todayName;
-          const color = DAY_COLORS[idx];
-
-          return (
-            <div
-              key={day}
-              onClick={() => !isPlanned && navigate('/')}
-              className={`bg-white border-2 border-black p-3 flex justify-between items-center ${
-                isToday ? 'ring-2 ring-orange-500' : ''
-              }`}
-            >
-
-              <div className="flex items-center gap-3">
-
-                <div
-                  className="w-2 h-10 border border-black"
-                  style={{ backgroundColor: color }}
-                />
-
-                <div>
-                  <div className="text-[10px] font-bold opacity-50">
-                    {day} {isToday && '(Bugün)'}
-                  </div>
-
-                  {isPlanned ? (
-                    <div className="font-bold">
-                      {weeklyPlan[day]?.recipeTitle}
-                    </div>
-                  ) : (
-                    <div className="text-sm opacity-40 italic">
-                      Ne pişiriyoruz?
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-              {isPlanned ? (
-                <div className="flex gap-2">
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/recipe/${weeklyPlan[day]?.recipeId}`);
-                    }}
-                    className="border-2 border-black px-2"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateWeeklyPlan(day, null);
-                    }}
-                    className="border-2 border-red-500 text-red-500 px-2"
-                  >
-                    ×
-                  </button>
-
-                </div>
-              ) : (
-                <button className="border-2 border-dashed border-black px-2">
-                  <Plus size={16} />
-                </button>
-              )}
-
-            </div>
-          );
-        })}
-
-      </div>
-
-      {/* RESET */}
-      {plannedCount > 0 && (
-        <div className="px-5">
-          <button
-            onClick={() => {
-              if (confirm('Plan silinsin mi?')) {
-                WEEK_DAYS.forEach(day => updateWeeklyPlan(day, null));
-              }
-            }}
-            className="w-full border-2 border-red-500 text-red-500 py-2 font-bold"
-          >
-            Planı Temizle
-          </button>
-        </div>
-      )}
-
-    </div>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FFF8F0' },
+  container: { flex: 1 },
+  content: { paddingBottom: 100 },
+  
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 4, borderBottomColor: '#1A1A2E' },
+  backBtn: { width: 40, height: 40, borderWidth: 2, borderColor: '#1A1A2E', alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', marginLeft: 16, gap: 8 },
+  headerTitle: { fontFamily: 'Righteous', fontSize: 20, color: '#1A1A2E' },
+  countBadge: { marginLeft: 'auto', backgroundColor: '#FF6B00', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 2, borderColor: '#1A1A2E' },
+  countText: { fontFamily: 'Nunito-Black', fontSize: 12, fontWeight: '900', color: '#FFFFFF' },
+
+  progressContainer: { height: 12, borderWidth: 2, borderColor: '#1A1A2E', backgroundColor: '#FFFFFF', marginHorizontal: 20, marginTop: 16, borderRadius: 6, overflow: 'hidden' },
+  progressBar: { height: '100%', backgroundColor: '#FF6B00' },
+  progressLabel: { textAlign: 'center', fontFamily: 'Nunito-Bold', fontSize: 12, fontWeight: 'bold', color: '#1A1A2E', marginTop: 8 },
+
+  daysList: { padding: 20, gap: 12 },
+  dayCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#1A1A2E', padding: 12, borderRadius: 12 },
+  dayCardToday: { borderColor: '#FF6B00', borderWidth: 3 },
+  dayLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  colorBar: { width: 8, height: 40, borderWidth: 1, borderColor: '#1A1A2E', borderRadius: 4, marginRight: 12 },
+  dayInfo: { flex: 1 },
+  dayName: { fontFamily: 'Nunito-Black', fontSize: 10, fontWeight: '900', opacity: 0.5, color: '#1A1A2E', marginBottom: 2 },
+  recipeTitle: { fontFamily: 'Nunito-Bold', fontSize: 14, fontWeight: 'bold', color: '#1A1A2E' },
+  emptyText: { fontFamily: 'Nunito-Bold', fontSize: 12, fontWeight: 'bold', color: '#1A1A2E', opacity: 0.4, fontStyle: 'italic' },
+
+  actionsRow: { flexDirection: 'row', gap: 8 },
+  actionBtn: { width: 32, height: 32, borderWidth: 2, borderColor: '#1A1A2E', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  actionBtnRed: { width: 32, height: 32, borderWidth: 2, borderColor: '#FF1744', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  addBtnDashed: { width: 32, height: 32, borderWidth: 2, borderColor: '#1A1A2E', borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' },
+
+  clearBtn: { marginHorizontal: 20, paddingVertical: 12, borderWidth: 2, borderColor: '#FF1744', borderRadius: 12, alignItems: 'center' },
+  clearBtnText: { fontFamily: 'Nunito-Black', fontSize: 14, fontWeight: '900', color: '#FF1744' },
+});

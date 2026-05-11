@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
-import { Lock, LogOut, ChevronRight, Globe, Palette, Sun } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  SafeAreaView,
+  TextInput,
+  Alert,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Lock, LogOut, ChevronRight, Globe, Palette, Sun } from 'lucide-react-native';
 import { useSettings } from '../contexts/SettingsContext';
 import { SettingsService } from '../services/settings.service';
 
@@ -19,9 +29,8 @@ const THEMES = [
   { nameKey: 'theme.auto', value: 'auto' },
 ];
 
-// ─── Screen ─────────────────────────────────────────────
 export function SettingsScreen() {
-  const navigate = useNavigate();
+  const navigation = useNavigation();
   const {
     settings,
     updateLanguage,
@@ -37,177 +46,208 @@ export function SettingsScreen() {
 
   const handlePasswordChange = () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert('Lütfen tüm alanları doldurun');
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert('Şifreler eşleşmiyor');
+      Alert.alert('Hata', 'Şifreler eşleşmiyor');
       return;
     }
 
-    alert('Şifre değiştirildi');
+    Alert.alert('Başarılı', 'Şifre değiştirildi');
     setShowPasswordChange(false);
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Çıkış Yap',
+      'Çıkış yapılsın mı?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Çıkış Yap', 
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Bilgi', 'Çıkış yapıldı');
+            // Normally: logout(), navigation.navigate('Auth', { screen: 'Login' });
+          }
+        }
+      ]
+    );
+  };
+
   return (
-    <div className="min-h-full pb-24 bg-[#FFF8F0]">
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <ChevronRight size={20} color="#1A1A2E" style={{ transform: [{ rotate: '180deg' }] }} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('settings.title') || 'Ayarlar'}</Text>
+        </View>
 
-      {/* HEADER */}
-      <div className="p-5 flex items-center gap-3">
-        <button
-          onClick={() => navigate('/profile')}
-          className="w-10 h-10 border-[3px] border-[#1A1A2E] bg-white flex items-center justify-center"
-        >
-          <ChevronRight className="rotate-180" size={20} />
-        </button>
+        <View style={styles.sectionContainer}>
+          
+          {/* LANGUAGE */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Globe size={18} color="#1A1A2E" />
+              <Text style={styles.cardTitle}>{t('settings.language') || 'Dil'}</Text>
+            </View>
+            <View style={styles.grid2}>
+              {LANGUAGES.map(lang => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[styles.gridBtn, settings.language === lang.code && styles.gridBtnActiveBlue]}
+                  onPress={() => updateLanguage(lang.code)}
+                >
+                  <Text style={[styles.gridBtnText, settings.language === lang.code && styles.gridBtnTextActive]}>
+                    {lang.flag} {lang.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        <h1 className="text-2xl font-bold">
-          {t('settings.title')}
-        </h1>
-      </div>
+          {/* THEME */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Sun size={18} color="#1A1A2E" />
+              <Text style={styles.cardTitle}>{t('settings.theme') || 'Tema'}</Text>
+            </View>
+            <View style={styles.grid3}>
+              {THEMES.map(theme => (
+                <TouchableOpacity
+                  key={theme.value}
+                  style={[styles.gridBtn3, settings.theme === theme.value && styles.gridBtnActiveYellow]}
+                  onPress={() => updateTheme(theme.value)}
+                >
+                  <Text style={[styles.gridBtnText, settings.theme === theme.value && { color: '#1A1A2E' }]}>
+                    {t(theme.nameKey) || theme.nameKey}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-      <div className="px-5 space-y-4">
+          {/* COLOR */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Palette size={18} color="#1A1A2E" />
+              <Text style={styles.cardTitle}>{t('settings.color') || 'Renk Seçimi'}</Text>
+            </View>
+            <View style={styles.grid3}>
+              {COLOR_OPTIONS.map(color => (
+                <TouchableOpacity
+                  key={color.value}
+                  style={[styles.gridBtn3Color, { backgroundColor: color.value }]}
+                  onPress={() => updatePrimaryColor(color.value)}
+                >
+                  <Text style={styles.gridBtnColorText}>
+                    {t(color.labelKey) || color.labelKey}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        {/* LANGUAGE */}
-        <div className="bg-white p-4 border-[3px] border-black">
-          <div className="flex items-center gap-2 mb-3">
-            <Globe size={18} />
-            <span className="font-bold">{t('settings.language')}</span>
-          </div>
+          {/* PASSWORD */}
+          <View style={styles.card}>
+            <TouchableOpacity 
+              style={styles.cardHeaderTouchable}
+              onPress={() => setShowPasswordChange(!showPasswordChange)}
+            >
+              <View style={styles.cardHeaderLeft}>
+                <Lock size={18} color="#1A1A2E" />
+                <Text style={styles.cardTitle}>{t('settings.password') || 'Şifre Değiştir'}</Text>
+              </View>
+              <ChevronRight size={18} color="#1A1A2E" style={{ transform: [{ rotate: showPasswordChange ? '90deg' : '0deg' }] }} />
+            </TouchableOpacity>
 
-          <div className="grid grid-cols-2 gap-2">
-            {LANGUAGES.map(lang => (
-              <button
-                key={lang.code}
-                onClick={() => updateLanguage(lang.code)}
-                className={`p-2 border-2 ${
-                  settings.language === lang.code
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white'
-                }`}
-              >
-                {lang.flag} {lang.name}
-              </button>
-            ))}
-          </div>
-        </div>
+            {showPasswordChange && (
+              <View style={styles.passwordForm}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mevcut şifre"
+                  secureTextEntry
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Yeni şifre"
+                  secureTextEntry
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Yeni şifre tekrar"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+                <TouchableOpacity style={styles.updateBtn} onPress={handlePasswordChange}>
+                  <Text style={styles.updateBtnText}>Güncelle</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
-        {/* THEME */}
-        <div className="bg-white p-4 border-[3px] border-black">
-          <div className="flex items-center gap-2 mb-3">
-            <Sun size={18} />
-            <span className="font-bold">{t('settings.theme')}</span>
-          </div>
+          {/* LOGOUT */}
+          <TouchableOpacity style={styles.cardLogout} onPress={handleLogout}>
+            <View style={styles.cardHeaderLeft}>
+              <LogOut size={18} color="#FF1744" />
+              <Text style={[styles.cardTitle, { color: '#FF1744' }]}>{t('settings.logout') || 'Çıkış Yap'}</Text>
+            </View>
+          </TouchableOpacity>
 
-          <div className="grid grid-cols-3 gap-2">
-            {THEMES.map(theme => (
-              <button
-                key={theme.value}
-                onClick={() => updateTheme(theme.value)}
-                className={`p-2 border-2 ${
-                  settings.theme === theme.value
-                    ? 'bg-yellow-400'
-                    : 'bg-white'
-                }`}
-              >
-                {t(theme.nameKey)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* COLOR */}
-        <div className="bg-white p-4 border-[3px] border-black">
-          <div className="flex items-center gap-2 mb-3">
-            <Palette size={18} />
-            <span className="font-bold">{t('settings.color')}</span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {COLOR_OPTIONS.map(color => (
-              <button
-                key={color.value}
-                onClick={() => updatePrimaryColor(color.value)}
-                style={{ backgroundColor: color.value }}
-                className="p-2 border-2 text-white font-bold"
-              >
-                {t(color.labelKey)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* PASSWORD */}
-        <div className="bg-white p-4 border-[3px] border-black">
-
-          <button
-            onClick={() => setShowPasswordChange(!showPasswordChange)}
-            className="flex justify-between w-full"
-          >
-            <div className="flex items-center gap-2">
-              <Lock size={18} />
-              <span className="font-bold">{t('settings.password')}</span>
-            </div>
-
-            <ChevronRight
-              className={showPasswordChange ? 'rotate-90' : ''}
-              size={18}
-            />
-          </button>
-
-          {showPasswordChange && (
-            <div className="mt-3 space-y-2">
-              <input
-                type="password"
-                placeholder="Mevcut şifre"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full p-2 border-2"
-              />
-              <input
-                type="password"
-                placeholder="Yeni şifre"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full p-2 border-2"
-              />
-              <input
-                type="password"
-                placeholder="Yeni şifre tekrar"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full p-2 border-2"
-              />
-
-              <button
-                onClick={handlePasswordChange}
-                className="w-full bg-red-500 text-white p-2 font-bold"
-              >
-                Güncelle
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* LOGOUT */}
-        <button
-          onClick={() => {
-            if (confirm('Çıkış yapılsın mı?')) {
-              alert('Çıkış yapıldı');
-            }
-          }}
-          className="w-full bg-white p-4 border-[3px] border-black flex justify-between"
-        >
-          <div className="flex items-center gap-2">
-            <LogOut size={18} />
-            <span className="font-bold">{t('settings.logout')}</span>
-          </div>
-        </button>
-      </div>
-    </div>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FFF8F0' },
+  container: { flex: 1 },
+  content: { paddingBottom: 100 },
+  
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 12 },
+  backBtn: { width: 40, height: 40, backgroundColor: '#FFFFFF', borderWidth: 3, borderColor: '#1A1A2E', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontFamily: 'Righteous', fontSize: 24, color: '#1A1A2E' },
+
+  sectionContainer: { paddingHorizontal: 20, gap: 16 },
+  
+  card: { backgroundColor: '#FFFFFF', padding: 16, borderWidth: 3, borderColor: '#1A1A2E', borderRadius: 12 },
+  cardLogout: { backgroundColor: '#FFFFFF', padding: 16, borderWidth: 3, borderColor: '#1A1A2E', borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  cardHeaderTouchable: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardTitle: { fontFamily: 'Nunito-Bold', fontSize: 16, fontWeight: 'bold', color: '#1A1A2E' },
+
+  grid2: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  gridBtn: { width: '48%', padding: 8, borderWidth: 2, borderColor: '#1A1A2E', backgroundColor: '#FFFFFF', borderRadius: 8, alignItems: 'center', marginBottom: 8 },
+  gridBtnActiveBlue: { backgroundColor: '#0091FF' },
+  
+  grid3: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  gridBtn3: { width: '31%', padding: 8, borderWidth: 2, borderColor: '#1A1A2E', backgroundColor: '#FFFFFF', borderRadius: 8, alignItems: 'center', marginBottom: 8 },
+  gridBtnActiveYellow: { backgroundColor: '#FFD600' },
+  
+  gridBtnText: { fontFamily: 'Nunito-Bold', fontSize: 12, fontWeight: 'bold', color: '#1A1A2E' },
+  gridBtnTextActive: { color: '#FFFFFF' },
+
+  gridBtn3Color: { width: '31%', padding: 8, borderWidth: 2, borderColor: '#1A1A2E', borderRadius: 8, alignItems: 'center', marginBottom: 8 },
+  gridBtnColorText: { fontFamily: 'Nunito-Bold', fontSize: 10, fontWeight: 'bold', color: '#FFFFFF' },
+
+  passwordForm: { marginTop: 12, gap: 8 },
+  input: { width: '100%', padding: 12, borderWidth: 2, borderColor: '#1A1A2E', borderRadius: 8, backgroundColor: '#FFF8F0', fontFamily: 'Nunito-Bold', color: '#1A1A2E' },
+  updateBtn: { width: '100%', padding: 12, backgroundColor: '#FF1744', borderRadius: 8, alignItems: 'center', borderWidth: 2, borderColor: '#1A1A2E' },
+  updateBtnText: { fontFamily: 'Nunito-Black', fontSize: 14, fontWeight: '900', color: '#FFFFFF' },
+});
